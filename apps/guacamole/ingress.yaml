@@ -1,0 +1,29 @@
+# 旧: traefik.http.middlewares.guac.addprefix.prefix=/guacamole
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: guac-addprefix
+  namespace: guacamole
+spec:
+  addPrefix:
+    prefix: /guacamole
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: guac
+  namespace: guacamole
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    certResolver: mydnschallenge
+  routes:
+    # TODO: 旧 compose のまま example.test のプレースホルダ。実ホスト名に変更すること。
+    - match: Host(`example.test`)
+      kind: Rule
+      middlewares:
+        - name: guac-addprefix
+      services:
+        - name: guac
+          port: 8080

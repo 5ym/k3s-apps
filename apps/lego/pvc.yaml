@@ -1,0 +1,17 @@
+# 旧 compose は ./letsencrypt:/.lego/certificates だけを持続化していたが、
+# ACME アカウント鍵（/.lego/accounts）が消えると毎回登録し直しになるため
+# /.lego ごと永続化する。
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lego-data
+  namespace: lego
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path-retain
+  resources:
+    requests:
+      storage: 1Gi

@@ -1,0 +1,17 @@
+# 旧 compose の `mode: host` で 8888 を直接公開していた部分。
+# HTTP プロキシなので Traefik（IngressRoute）は通さず、k3s の ServiceLB で素の TCP を公開する。
+apiVersion: v1
+kind: Service
+metadata:
+  name: tinyproxy
+  namespace: tinyproxy
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app: tinyproxy
+  ports:
+    - name: proxy
+      port: 8888
+      targetPort: 8888
+      protocol: TCP

@@ -1,0 +1,17 @@
+# 旧 compose は ./speed:/var/www/html を bind mount していたが、これはイメージ内の
+# アプリ本体を空ディレクトリで覆い隠してしまう指定だった。telemetry の SQLite が
+# 置かれる /database だけを永続化する形に直している。
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: speed-database
+  namespace: speed
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path-retain
+  resources:
+    requests:
+      storage: 1Gi

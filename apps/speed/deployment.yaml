@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: speed
+  namespace: speed
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: speed
+  template:
+    metadata:
+      labels:
+        app: speed
+    spec:
+      containers:
+        - name: speed
+          image: adolfintel/speedtest
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: MODE
+              value: standalone
+            - name: TELEMETRY
+              value: "true"
+            - name: DB_TYPE
+              value: sqlite
+            - name: EMAIL
+              value: info@doany.dev
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: speed
+                  key: password
+            - name: IPINFO_APIKEY
+              valueFrom:
+                secretKeyRef:
+                  name: speed
+                  key: ipinfo-apikey
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: database
+              mountPath: /database
+      volumes:
+        - name: database
+          persistentVolumeClaim:
+            claimName: speed-database

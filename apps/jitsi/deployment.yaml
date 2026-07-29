@@ -1,0 +1,153 @@
+# jitsi の各コンテナは起動時に env から /config を毎回生成し直すため、
+# /config は PVC ではなく emptyDir にしている（旧 compose のホストバインドは
+# 実質「生成物置き場」でしかなかった）。永続が要るのは transcripts と
+# prosody-plugins-custom だけ。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prosody
+  namespace: jitsi
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prosody
+  template:
+    metadata:
+      labels:
+        app: prosody
+    spec:
+      containers:
+        - name: prosody
+          image: jitsi/prosody:latest
+          envFrom:
+            - configMapRef:
+                name: jitsi-config
+            - secretRef:
+                name: jitsi-secrets
+          ports:
+            - name: c2s
+              containerPort: 5222
+            - name: bosh
+              containerPort: 5280
+            - name: xmpp-comp
+              containerPort: 5347
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: plugins
+              mountPath: /prosody-plugins-custom
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: plugins
+          persistentVolumeClaim:
+            claimName: jitsi-prosody-plugins
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jw
+  namespace: jitsi
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: jw
+  template:
+    metadata:
+      labels:
+        app: jw
+    spec:
+      containers:
+        - name: jw
+          image: jitsi/web:latest
+          envFrom:
+            - configMapRef:
+                name: jitsi-config
+            - secretRef:
+                name: jitsi-secrets
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: transcripts
+              mountPath: /usr/share/jitsi-meet/transcripts
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: transcripts
+          persistentVolumeClaim:
+            claimName: jitsi-transcripts
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jicofo
+  namespace: jitsi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jicofo
+  template:
+    metadata:
+      labels:
+        app: jicofo
+    spec:
+      containers:
+        - name: jicofo
+          image: jitsi/jicofo:latest
+          envFrom:
+            - configMapRef:
+                name: jitsi-config
+            - secretRef:
+                name: jitsi-secrets
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jvb
+  namespace: jitsi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jvb
+  template:
+    metadata:
+      labels:
+        app: jvb
+    spec:
+      containers:
+        - name: jvb
+          image: jitsi/jvb:latest
+          envFrom:
+            - configMapRef:
+                name: jitsi-config
+            - secretRef:
+                name: jitsi-secrets
+          ports:
+            - name: media
+              containerPort: 10000
+              protocol: UDP
+            - name: colibri
+              containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          emptyDir: {}

@@ -1,0 +1,48 @@
+# 旧 compose と同じく all-in-one イメージ（PostgreSQL 同梱）を使う。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openproject
+  namespace: openproject
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: openproject
+  template:
+    metadata:
+      labels:
+        app: openproject
+    spec:
+      containers:
+        - name: openproject
+          image: openproject/openproject:17
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: OPENPROJECT_HOST__NAME
+              value: o.doany.io
+            - name: OPENPROJECT_HTTPS
+              value: "true"
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: openproject
+                  key: secret-key-base
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/openproject/pgdata
+            - name: assets
+              mountPath: /var/openproject/assets
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: openproject-pgdata
+        - name: assets
+          persistentVolumeClaim:
+            claimName: openproject-assets

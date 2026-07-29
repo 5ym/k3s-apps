@@ -1,0 +1,11 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>5ym/renovate-config"
+  ],
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/apps/.+\\.yaml$/"
+    ]
+  }
+}

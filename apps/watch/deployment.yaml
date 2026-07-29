@@ -1,0 +1,123 @@
+# swarm では bind mount 先のディレクトリ所有者を手で合わせていたが、k8s では
+# local-path が root:root で PVC を切るため、fsGroup でイメージ既定の uid に合わせる
+# 必要がある（prometheus=65534/nobody, grafana=472）。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: watch
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      securityContext:
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+      containers:
+        - name: prometheus
+          image: prom/prometheus
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --web.console.libraries=/usr/share/prometheus/console_libraries
+            - --web.console.templates=/usr/share/prometheus/consoles
+          ports:
+            - name: http
+              containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: data
+              mountPath: /prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: prometheus-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: prometheus-data
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: watch
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      securityContext:
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+      containers:
+        - name: grafana
+          image: grafana/grafana
+          envFrom:
+            - secretRef:
+                name: grafana-smtp
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: GF_SERVER_ROOT_URL
+              value: https://w.doany.io
+            - name: GF_RENDERING_SERVER_URL
+              value: http://renderer:8081/render
+            - name: GF_RENDERING_CALLBACK_URL
+              value: http://grafana:3000/
+            - name: GF_SMTP_ENABLED
+              value: "true"
+            - name: GF_EXTERNAL_IMAGE_STORAGE_PROVIDER
+              value: local
+          ports:
+            - name: http
+              containerPort: 3000
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: grafana-data
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: renderer
+  namespace: watch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: renderer
+  template:
+    metadata:
+      labels:
+        app: renderer
+    spec:
+      containers:
+        - name: renderer
+          image: grafana/grafana-image-renderer
+          env:
+            - name: BROWSER_TZ
+              value: Asia/Tokyo
+          ports:
+            - name: http
+              containerPort: 8081

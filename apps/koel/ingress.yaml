@@ -1,0 +1,18 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: koel
+  namespace: koel
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    certResolver: mydnschallenge
+  routes:
+    # !! 注意: 旧 koel-compose.yml のままの値だが、k.doany.io は現在
+    #    5ym/k3s-konomitv の IngressRoute が使用中。適用前にどちらかを変更すること。
+    - match: Host(`k.doany.io`)
+      kind: Rule
+      services:
+        - name: koel
+          port: 80

@@ -1,0 +1,233 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+  namespace: discourse
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      containers:
+        - name: postgresql
+          image: docker.io/bitnami/postgresql:11
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: POSTGRESQL_DATABASE
+              value: discourse
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discourse
+                  key: postgres-password
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/postgresql
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: discourse-postgresql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: discourse
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: docker.io/bitnami/redis:7.0
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discourse
+                  key: redis-password
+          ports:
+            - name: redis
+              containerPort: 6379
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/redis
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: discourse-redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discourse
+  namespace: discourse
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: discourse
+  template:
+    metadata:
+      labels:
+        app: discourse
+    spec:
+      containers:
+        - name: discourse
+          image: docker.io/bitnami/discourse:2
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: DISCOURSE_HOST
+              value: i.daco.dev
+            - name: DISCOURSE_DATABASE_HOST
+              value: postgresql
+            - name: DISCOURSE_DATABASE_PORT_NUMBER
+              value: "5432"
+            - name: DISCOURSE_DATABASE_USER
+              value: postgres
+            - name: DISCOURSE_DATABASE_NAME
+              value: discourse
+            - name: DISCOURSE_REDIS_HOST
+              value: redis
+            - name: DISCOURSE_REDIS_PORT_NUMBER
+              value: "6379"
+            - name: POSTGRESQL_CLIENT_POSTGRES_USER
+              value: postgres
+            - name: POSTGRESQL_CLIENT_CREATE_DATABASE_NAME
+              value: discourse
+            - name: POSTGRESQL_CLIENT_CREATE_DATABASE_EXTENSIONS
+              value: hstore,pg_trgm
+            - name: DISCOURSE_SMTP_HOST
+              value: smtp.outlook.com
+            - name: DISCOURSE_SMTP_PORT
+              value: "587"
+            - name: DISCOURSE_SMTP_USER
+              value: info@daco.dev
+            - name: DISCOURSE_SMTP_PROTOCOL
+              value: tls
+            - name: DISCOURSE_EMAIL
+              value: info@daco.dev
+            - name: DISCOURSE_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discourse
+                  key: postgres-password
+            - name: POSTGRESQL_CLIENT_POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discourse
+                  key: postgres-password
+            - name: DISCOURSE_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discourse
+                  key: redis-password
+            - name: DISCOURSE_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discourse
+                  key: smtp-password
+          ports:
+            - name: http
+              containerPort: 3000
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/discourse
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: discourse-data
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sidekiq
+  namespace: discourse
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: sidekiq
+  template:
+    metadata:
+      labels:
+        app: sidekiq
+    spec:
+      containers:
+        - name: sidekiq
+          image: docker.io/bitnami/discourse:2
+          command:
+            - /opt/bitnami/scripts/discourse-sidekiq/run.sh
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: DISCOURSE_HOST
+              value: i.daco.dev
+            - name: DISCOURSE_DATABASE_HOST
+              value: postgresql
+            - name: DISCOURSE_DATABASE_PORT_NUMBER
+              value: "5432"
+            - name: DISCOURSE_DATABASE_USER
+              value: postgres
+            - name: DISCOURSE_DATABASE_NAME
+              value: discourse
+            - name: DISCOURSE_REDIS_HOST
+              value: redis
+            - name: DISCOURSE_REDIS_PORT_NUMBER
+              value: "6379"
+            - name: DISCOURSE_SMTP_HOST
+              value: smtp.outlook.com
+            - name: DISCOURSE_SMTP_PORT
+              value: "587"
+            - name: DISCOURSE_SMTP_USER
+              value: info@daco.dev
+            - name: DISCOURSE_SMTP_PROTOCOL
+              value: tls
+            - name: DISCOURSE_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discourse
+                  key: postgres-password
+            - name: DISCOURSE_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discourse
+                  key: redis-password
+            - name: DISCOURSE_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: discourse
+                  key: smtp-password
+          volumeMounts:
+            - name: data
+              mountPath: /bitnami/discourse
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: discourse-sidekiq

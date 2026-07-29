@@ -1,0 +1,106 @@
+# 旧 compose からの変更点:
+#  - mongod の `--smallfiles` を削除（MongoDB 4.2 以降で撤廃されたオプションで、
+#    renovate が mongo:8.3 に上げた時点で起動しなくなっていた）。
+#  - MONGO_URL を `local` DB ではなく `rocketchat` DB に修正。oplog だけが `local`。
+#  - replSet の初期化は r-init サービスではなく Job（job.yaml）で行う。
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: rocketchat
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:8
+          args:
+            - --replSet
+            - rs0
+            - --oplogSize
+            - "128"
+            - --bind_ip_all
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+          ports:
+            - name: mongo
+              containerPort: 27017
+          readinessProbe:
+            exec:
+              command:
+                - mongosh
+                - --quiet
+                - --eval
+                - "db.adminCommand('ping')"
+            periodSeconds: 10
+            failureThreshold: 30
+          volumeMounts:
+            - name: db
+              mountPath: /data/db
+            - name: configdb
+              mountPath: /data/configdb
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: rocketchat-db
+        - name: configdb
+          persistentVolumeClaim:
+            claimName: rocketchat-configdb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rocketchat
+  namespace: rocketchat
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: rocketchat
+  template:
+    metadata:
+      labels:
+        app: rocketchat
+    spec:
+      containers:
+        - name: rocketchat
+          image: rocket.chat
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            # TODO: ingress.yaml のホスト名と合わせること
+            - name: ROOT_URL
+              value: http://r.localhost
+            - name: MONGO_URL
+              value: mongodb://mongo:27017/rocketchat?replicaSet=rs0
+            - name: MONGO_OPLOG_URL
+              value: mongodb://mongo:27017/local?replicaSet=rs0
+          ports:
+            - name: http
+              containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /api/info
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: rocketchat-uploads

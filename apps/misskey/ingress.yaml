@@ -1,0 +1,18 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: misskey
+  namespace: misskey
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    certResolver: mydnschallenge
+  routes:
+    # !! 注意: m.doany.io は apps/mstdn の IngressRoute とホスト名が衝突する。
+    #    旧構成でも misskey が mstdn を置き換えた形なので、両方同時には適用しないこと。
+    - match: Host(`m.doany.io`)
+      kind: Rule
+      services:
+        - name: misskey
+          port: 3000

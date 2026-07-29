@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: koel
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+        - name: db
+          image: mysql/mysql-server:5.7
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: MYSQL_RANDOM_ROOT_PASSWORD
+              value: "yes"
+            - name: MYSQL_DATABASE
+              value: koel
+            - name: MYSQL_USER
+              value: koel
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: koel
+                  key: db-password
+          ports:
+            - name: mysql
+              containerPort: 3306
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: koel-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: koel
+  namespace: koel
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: koel
+  template:
+    metadata:
+      labels:
+        app: koel
+    spec:
+      containers:
+        - name: koel
+          image: phanan/koel
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: DB_CONNECTION
+              value: mysql
+            - name: DB_HOST
+              value: db
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_USERNAME
+              value: koel
+            - name: DB_DATABASE
+              value: koel
+            - name: FORCE_HTTPS
+              value: "true"
+            - name: MEDIA_PATH
+              value: /music
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: koel
+                  key: app-key
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: koel
+                  key: db-password
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: music
+              mountPath: /music
+            - name: covers
+              mountPath: /var/www/html/public/img/covers
+            - name: search-index
+              mountPath: /var/www/html/storage/search-indexes
+      volumes:
+        - name: music
+          persistentVolumeClaim:
+            claimName: koel-music
+        - name: covers
+          persistentVolumeClaim:
+            claimName: koel-covers
+        - name: search-index
+          persistentVolumeClaim:
+            claimName: koel-search-index

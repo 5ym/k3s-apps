@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: speed
+  namespace: speed
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    certResolver: mydnschallenge
+  routes:
+    - match: Host(`s.doany.io`)
+      kind: Rule
+      services:
+        - name: speed
+          port: 80

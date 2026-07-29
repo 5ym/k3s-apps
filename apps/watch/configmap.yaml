@@ -1,0 +1,41 @@
+# 旧 watch/prometheus.yml 相当。旧リポジトリには実体が入っておらず、
+# ホスト側で手書きする前提だったので最小構成を用意した。
+# TODO: scrape 対象は環境に合わせて足すこと。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: watch
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 30s
+      evaluation_interval: 30s
+
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets: ['localhost:9090']
+
+      # k3s 同梱 Traefik のメトリクス（HelmChartConfig で metrics.prometheus を
+      # 有効にしている場合のみ）
+      # - job_name: traefik
+      #   static_configs:
+      #     - targets: ['traefik.kube-system.svc.cluster.local:9100']
+
+      # kubelet / cAdvisor を取る場合は ServiceAccount と ClusterRole
+      # （nodes/metrics, nodes/proxy への get）が別途必要。
+      # - job_name: kubernetes-cadvisor
+      #   kubernetes_sd_configs:
+      #     - role: node
+      #   scheme: https
+      #   tls_config:
+      #     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      #   bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      #   relabel_configs:
+      #     - target_label: __address__
+      #       replacement: kubernetes.default.svc:443
+      #     - source_labels: [__meta_kubernetes_node_name]
+      #       regex: (.+)
+      #       target_label: __metrics_path__
+      #       replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor

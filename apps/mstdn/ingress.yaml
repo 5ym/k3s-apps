@@ -1,0 +1,26 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: mstdn
+  namespace: mstdn
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    certResolver: mydnschallenge
+  routes:
+    # !! 注意: m.doany.io は apps/misskey とホスト名が衝突する。両方同時には適用しないこと。
+    # streaming 側を先に評価させるため priority を上げている
+    # （swarm では Traefik がルールの長さで自動的に優先度を決めていた）。
+    - match: Host(`m.doany.io`) && PathPrefix(`/api/v1/streaming`)
+      kind: Rule
+      priority: 20
+      services:
+        - name: mstdn-streaming
+          port: 4000
+    - match: Host(`m.doany.io`)
+      kind: Rule
+      priority: 10
+      services:
+        - name: mstdn
+          port: 3000

@@ -1,0 +1,208 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  namespace: mstdn
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+        - name: db
+          image: postgres:14-alpine
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mstdn-env
+                  key: DB_PASS
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            periodSeconds: 5
+            failureThreshold: 20
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mstdn-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: mstdn
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:5.0-alpine
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            periodSeconds: 5
+            failureThreshold: 20
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mstdn-redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mstdn
+  namespace: mstdn
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mstdn
+  template:
+    metadata:
+      labels:
+        app: mstdn
+    spec:
+      containers:
+        - name: mstdn
+          image: tootsuite/mastodon
+          command:
+            - bash
+            - -c
+            - rm -f /mastodon/tmp/pids/server.pid; bundle exec rails s -p 3000
+          envFrom:
+            - secretRef:
+                name: mstdn-env
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+          ports:
+            - name: http
+              containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30
+          volumeMounts:
+            - name: system
+              mountPath: /mastodon/public/system
+      volumes:
+        - name: system
+          persistentVolumeClaim:
+            claimName: mstdn-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mstdn-streaming
+  namespace: mstdn
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mstdn-streaming
+  template:
+    metadata:
+      labels:
+        app: mstdn-streaming
+    spec:
+      containers:
+        - name: streaming
+          image: tootsuite/mastodon
+          command:
+            - node
+            - ./streaming
+          envFrom:
+            - secretRef:
+                name: mstdn-env
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+          ports:
+            - name: streaming
+              containerPort: 4000
+          readinessProbe:
+            httpGet:
+              path: /api/v1/streaming/health
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 30
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sidekiq
+  namespace: mstdn
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: sidekiq
+  template:
+    metadata:
+      labels:
+        app: sidekiq
+    spec:
+      containers:
+        - name: sidekiq
+          image: tootsuite/mastodon
+          command:
+            - bundle
+            - exec
+            - sidekiq
+          envFrom:
+            - secretRef:
+                name: mstdn-env
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+          volumeMounts:
+            - name: system
+              mountPath: /mastodon/public/system
+      volumes:
+        - name: system
+          persistentVolumeClaim:
+            claimName: mstdn-system

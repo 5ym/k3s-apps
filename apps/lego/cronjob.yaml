@@ -1,0 +1,49 @@
+# 旧 compose の `entrypoint: watch -n 604800`（1 週間ごとに lego を叩き直す）を
+# CronJob に置き換えたもの。run ではなく renew を使い、期限 30 日を切ったときだけ更新する。
+# job.yaml と引数（ドメイン・メール）を必ず一致させること。
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lego-renew
+  namespace: lego
+spec:
+  schedule: "0 4 * * 1"
+  timeZone: Asia/Tokyo
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: lego
+              image: goacme/lego
+              args:
+                - --dns
+                - cloudflare
+                # TODO: ドメインとメールアドレスを実際のものに変更すること
+                - -d
+                - domain.test
+                - -d
+                - "*.domain.test"
+                - --email
+                - your-email@example.com
+                - --path
+                - /data
+                - -a
+                - renew
+                - --days
+                - "30"
+              envFrom:
+                - secretRef:
+                    name: lego-cloudflare
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: lego-data

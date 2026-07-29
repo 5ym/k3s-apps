@@ -1,0 +1,41 @@
+# 旧 jitsi/.env（env.example + gen-passwords.sh）のうち、秘密でない部分。
+# 秘密（*_AUTH_PASSWORD 系）は secret.yaml 側。
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jitsi-config
+  namespace: jitsi
+data:
+  TZ: Asia/Tokyo
+  # TODO: 旧 compose のまま example.test のプレースホルダ。実ホスト名に変更すること。
+  PUBLIC_URL: https://example.test
+  # compose の service 名ではなく k8s Service 名で解決する
+  XMPP_SERVER: prosody
+  XMPP_BOSH_URL_BASE: http://prosody:5280
+  XMPP_DOMAIN: meet.jitsi
+  XMPP_AUTH_DOMAIN: auth.meet.jitsi
+  XMPP_MUC_DOMAIN: muc.meet.jitsi
+  XMPP_INTERNAL_MUC_DOMAIN: internal-muc.meet.jitsi
+  XMPP_GUEST_DOMAIN: guest.meet.jitsi
+  XMPP_RECORDER_DOMAIN: recorder.meet.jitsi
+  JICOFO_AUTH_USER: focus
+  JVB_AUTH_USER: jvb
+  JIGASI_XMPP_USER: jigasi
+  JIBRI_RECORDER_USER: recorder
+  JIBRI_XMPP_USER: jibri
+  JVB_BREWERY_MUC: jvbbrewery
+  JIGASI_BREWERY_MUC: jigasibrewery
+  JIBRI_BREWERY_MUC: jibribrewery
+  JIBRI_RECORDER_GROUP: jibri
+  JIBRI_XMPP_GROUP: jibri
+  JVB_PORT: "10000"
+  JVB_TCP_HARVESTER_DISABLED: "true"
+  ENABLE_AUTH: "0"
+  ENABLE_GUESTS: "0"
+  ENABLE_LETSENCRYPT: "0"
+  ENABLE_HTTP_REDIRECT: "0"
+  ENABLE_XMPP_WEBSOCKET: "1"
+  ENABLE_COLIBRI_WEBSOCKET: "1"
+  DISABLE_HTTPS: "1"
+  # TODO: JVB が広告する到達可能な IP。ノードのグローバル/LAN IP を入れること。
+  JVB_ADVERTISE_IPS: ""

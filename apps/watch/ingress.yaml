@@ -1,0 +1,40 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: prometheus
+  namespace: watch
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    certResolver: mydnschallenge
+  routes:
+    - match: Host(`w.doany.io`)
+      kind: Rule
+      # 旧構成では Prometheus が無認証で公開されていた。konomitv と同じく
+      # bootstrap の forward-auth を挟むようにしている。不要なら middlewares ごと消す。
+      middlewares:
+        - name: forward-auth
+          namespace: auth
+      services:
+        - name: prometheus
+          port: 9090
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: watch
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    certResolver: mydnschallenge
+  routes:
+    # 旧 compose どおり Grafana だけ別ドメイン（w.daco.dev）。
+    # Grafana 自身に認証があるので forward-auth は挟んでいない。
+    - match: Host(`w.daco.dev`)
+      kind: Rule
+      services:
+        - name: grafana
+          port: 3000

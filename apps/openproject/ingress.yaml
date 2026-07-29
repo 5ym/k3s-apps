@@ -1,0 +1,17 @@
+# 旧 compose では service 名が `openprojct` と typo していたが、ここでは openproject に直した。
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: openproject
+  namespace: openproject
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    certResolver: mydnschallenge
+  routes:
+    - match: Host(`o.doany.io`)
+      kind: Rule
+      services:
+        - name: openproject
+          port: 80

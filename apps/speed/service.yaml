@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: speed
+  namespace: speed
+spec:
+  selector:
+    app: speed
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
