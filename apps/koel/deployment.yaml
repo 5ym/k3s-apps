@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: db
-          image: mysql/mysql-server:5.7
+          image: mysql/mysql-server:8.0
           env:
             - name: TZ
               value: Asia/Tokyo
