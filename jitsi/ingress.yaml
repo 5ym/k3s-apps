@@ -9,7 +9,7 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # TODO: 旧 compose のまま example.test のプレースホルダ。実ホスト名に変更すること。
+    # TODO: example.test はプレースホルダ。実ホスト名に変更すること。
     # 変更したら configmap.yaml の PUBLIC_URL も合わせること。
     - match: Host(`example.test`)
       kind: Rule

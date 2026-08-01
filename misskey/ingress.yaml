@@ -9,8 +9,8 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # !! 注意: m.doany.io は apps/mstdn の IngressRoute とホスト名が衝突する。
-    #    旧構成でも misskey が mstdn を置き換えた形なので、両方同時には適用しないこと。
+    # !! 注意: m.doany.io は mstdn の IngressRoute とホスト名が衝突する。
+    #    両方同時には適用しないこと。
     - match: Host(`m.doany.io`)
       kind: Rule
       services:

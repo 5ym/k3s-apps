@@ -1,7 +1,6 @@
 # jitsi の各コンテナは起動時に env から /config を毎回生成し直すため、
-# /config は PVC ではなく emptyDir にしている（旧 compose のホストバインドは
-# 実質「生成物置き場」でしかなかった）。永続が要るのは transcripts と
-# prosody-plugins-custom だけ。
+# /config は PVC ではなく emptyDir にしている。永続が要るのは
+# transcripts と prosody-plugins-custom だけ。
 apiVersion: apps/v1
 kind: Deployment
 metadata:

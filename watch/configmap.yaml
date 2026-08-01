@@ -1,5 +1,4 @@
-# 旧 watch/prometheus.yml 相当。旧リポジトリには実体が入っておらず、
-# ホスト側で手書きする前提だったので最小構成を用意した。
+# Prometheus 本体の設定。最小構成しか入れていない。
 # TODO: scrape 対象は環境に合わせて足すこと。
 apiVersion: v1
 kind: ConfigMap

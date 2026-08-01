@@ -1,6 +1,5 @@
-# swarm では bind mount 先のディレクトリ所有者を手で合わせていたが、k8s では
-# local-path が root:root で PVC を切るため、fsGroup でイメージ既定の uid に合わせる
-# 必要がある（prometheus=65534/nobody, grafana=472）。
+# local-path は PVC を root:root で切るため、fsGroup でイメージ既定の uid に
+# 合わせないと書き込めない（prometheus=65534/nobody, grafana=472）。
 apiVersion: apps/v1
 kind: Deployment
 metadata:

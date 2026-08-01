@@ -1,6 +1,5 @@
-# 旧 compose は ./speed:/var/www/html を bind mount していたが、これはイメージ内の
-# アプリ本体を空ディレクトリで覆い隠してしまう指定だった。telemetry の SQLite が
-# 置かれる /database だけを永続化する形に直している。
+# 永続化するのは telemetry の SQLite が置かれる /database だけ。
+# /var/www/html はイメージ内のアプリ本体なので、ボリュームで覆わないこと。
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
