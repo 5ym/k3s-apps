@@ -1,4 +1,4 @@
-# 旧 jitsi/.env（env.example + gen-passwords.sh）のうち、秘密でない部分。
+# jitsi の各コンテナに渡す設定のうち、秘密でない部分。
 # 秘密（*_AUTH_PASSWORD 系）は secret.yaml 側。
 apiVersion: v1
 kind: ConfigMap
@@ -7,9 +7,9 @@ metadata:
   namespace: jitsi
 data:
   TZ: Asia/Tokyo
-  # TODO: 旧 compose のまま example.test のプレースホルダ。実ホスト名に変更すること。
+  # TODO: example.test はプレースホルダ。実ホスト名に変更すること。
   PUBLIC_URL: https://example.test
-  # compose の service 名ではなく k8s Service 名で解決する
+  # 各コンポーネントは k8s の Service 名で解決する
   XMPP_SERVER: prosody
   XMPP_BOSH_URL_BASE: http://prosody:5280
   XMPP_DOMAIN: meet.jitsi

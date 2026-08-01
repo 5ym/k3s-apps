@@ -1,5 +1,5 @@
-# 旧 compose の `mode: host` で 8888 を直接公開していた部分。
-# HTTP プロキシなので Traefik（IngressRoute）は通さず、k3s の ServiceLB で素の TCP を公開する。
+# HTTP プロキシなので Traefik（IngressRoute）は通さず、
+# k3s の ServiceLB で素の TCP 8888 を公開する。
 apiVersion: v1
 kind: Service
 metadata:

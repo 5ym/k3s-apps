@@ -30,8 +30,8 @@ spec:
       port: 80
       targetPort: 80
 ---
-# 旧 compose の `ports: 10000/udp, 4443` 相当。
-# メディアは Traefik を通らないので k3s の ServiceLB で直接公開する。
+# JVB のメディア（UDP 10000 / TCP 4443）は Traefik を通らないので、
+# k3s の ServiceLB で直接公開する。
 apiVersion: v1
 kind: Service
 metadata:

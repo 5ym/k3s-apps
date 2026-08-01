@@ -9,7 +9,7 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # TODO: 旧 compose は `yourdoamin` というプレースホルダのままだった。実ホスト名に変更すること。
+    # TODO: プレースホルダのままなので実ホスト名に変更すること。
     - match: Host(`nextcloud.example.com`)
       kind: Rule
       services:

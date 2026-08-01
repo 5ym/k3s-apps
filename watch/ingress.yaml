@@ -11,8 +11,8 @@ spec:
   routes:
     - match: Host(`w.doany.io`)
       kind: Rule
-      # 旧構成では Prometheus が無認証で公開されていた。konomitv と同じく
-      # bootstrap の forward-auth を挟むようにしている。不要なら middlewares ごと消す。
+      # Prometheus 自身には認証がないので bootstrap の forward-auth を挟む。
+      # 不要なら middlewares ごと消す。
       middlewares:
         - name: forward-auth
           namespace: auth
@@ -31,7 +31,7 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # 旧 compose どおり Grafana だけ別ドメイン（w.daco.dev）。
+    # Grafana だけ別ドメイン（w.daco.dev）。
     # Grafana 自身に認証があるので forward-auth は挟んでいない。
     - match: Host(`w.daco.dev`)
       kind: Rule

@@ -9,8 +9,8 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # !! 注意: 旧 koel-compose.yml のままの値だが、k.doany.io は現在
-    #    5ym/k3s-konomitv の IngressRoute が使用中。適用前にどちらかを変更すること。
+    # !! 注意: k.doany.io は 5ym/k3s-konomitv の IngressRoute が使用中。
+    #    適用前にどちらかを変更すること。
     - match: Host(`k.doany.io`)
       kind: Rule
       services:

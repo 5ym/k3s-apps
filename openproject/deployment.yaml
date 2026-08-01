@@ -1,4 +1,4 @@
-# 旧 compose と同じく all-in-one イメージ（PostgreSQL 同梱）を使う。
+# PostgreSQL 同梱の all-in-one イメージを使う（DB を別 Deployment に分けていない）。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
