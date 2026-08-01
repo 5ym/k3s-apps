@@ -8,7 +8,6 @@ k3s の上にセルフホストのアプリを載せるときの参考マニフ�
 | --- | --- | --- |
 | [discourse](discourse) | Discourse + PostgreSQL + Redis + Sidekiq | `i.daco.dev` |
 | [jitsi](jitsi) | Jitsi Meet（web / prosody / jicofo / jvb） | ⚠️ 未設定 + JVB は LB `10000/udp` |
-| [koel](koel) | Koel + MySQL | ⚠️ `k.doany.io`（衝突） |
 | [misskey](misskey) | Misskey + PostgreSQL + Redis | ⚠️ `m.doany.io`（衝突） |
 | [mstdn](mstdn) | Mastodon（web / streaming / sidekiq）+ PostgreSQL + Redis | ⚠️ `m.doany.io`（衝突） |
 | [nextcloud](nextcloud) | Nextcloud | ⚠️ 未設定 |
@@ -81,9 +80,7 @@ vim /tmp/misskey-secret.yaml
 
 ## 適用前に直すところ
 
-- **ホスト名の衝突**
-  - `k.doany.io` … [koel](koel) と、既存の [5ym/k3s-konomitv](https://github.com/5ym/k3s-konomitv) が同じホスト名を使う。
-  - `m.doany.io` … [misskey](misskey) と [mstdn](mstdn) が同じホスト名を使う。両方同時に適用しない。
+- **ホスト名の衝突** … `m.doany.io` を [misskey](misskey) と [mstdn](mstdn) が両方使っている。同時に適用しない。
 - **プレースホルダのままのホスト名** … [jitsi](jitsi)（`example.test`）、[nextcloud](nextcloud)（`nextcloud.example.com`）。`.test` や `.example.com` のままでは DNS-01 で証明書を取得できない。
 - **[jitsi](jitsi) の `JVB_ADVERTISE_IPS` が空** … ノードの到達可能な IP を入れないとメディアが繋がらない。
 - **[watch](watch) の scrape 対象** … `configmap.yaml` は最小構成しか入っていない。
