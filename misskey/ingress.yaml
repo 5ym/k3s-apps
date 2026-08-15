@@ -10,7 +10,7 @@ spec:
     certResolver: mydnschallenge
   routes:
     # 変更したら secret.yaml の default.yml の url も合わせること。
-    - match: Host(`m.doany.io`)
+    - match: Host(`my.doany.io`)
       kind: Rule
       services:
         - name: misskey

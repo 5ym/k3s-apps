@@ -102,7 +102,7 @@ spec:
             - name: TZ
               value: Asia/Tokyo
             - name: DISCOURSE_HOST
-              value: i.daco.dev
+              value: ds.doany.io
             - name: DISCOURSE_DATABASE_HOST
               value: postgresql
             - name: DISCOURSE_DATABASE_PORT_NUMBER
@@ -126,11 +126,11 @@ spec:
             - name: DISCOURSE_SMTP_PORT
               value: "587"
             - name: DISCOURSE_SMTP_USER
-              value: info@daco.dev
+              value: info@doany.io
             - name: DISCOURSE_SMTP_PROTOCOL
               value: tls
             - name: DISCOURSE_EMAIL
-              value: info@daco.dev
+              value: info@doany.io
             - name: DISCOURSE_DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -188,7 +188,7 @@ spec:
             - name: TZ
               value: Asia/Tokyo
             - name: DISCOURSE_HOST
-              value: i.daco.dev
+              value: ds.doany.io
             - name: DISCOURSE_DATABASE_HOST
               value: postgresql
             - name: DISCOURSE_DATABASE_PORT_NUMBER
@@ -206,7 +206,7 @@ spec:
             - name: DISCOURSE_SMTP_PORT
               value: "587"
             - name: DISCOURSE_SMTP_USER
-              value: info@daco.dev
+              value: info@doany.io
             - name: DISCOURSE_SMTP_PROTOCOL
               value: tls
             - name: DISCOURSE_DATABASE_PASSWORD

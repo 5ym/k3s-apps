@@ -9,7 +9,7 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    - match: Host(`s.doany.io`)
+    - match: Host(`sd.doany.io`)
       kind: Rule
       services:
         - name: speed

@@ -14,13 +14,13 @@ spec:
     #
     # 変更したら application.yaml の mastodon.localDomain も合わせること。
     # Service 名と port は chart が出すもの（fullnameOverride: mstdn）。
-    - match: Host(`t.doany.io`) && PathPrefix(`/api/v1/streaming`)
+    - match: Host(`mn.doany.io`) && PathPrefix(`/api/v1/streaming`)
       kind: Rule
       priority: 20
       services:
         - name: mstdn-streaming
           port: 4000
-    - match: Host(`t.doany.io`)
+    - match: Host(`mn.doany.io`)
       kind: Rule
       priority: 10
       services:

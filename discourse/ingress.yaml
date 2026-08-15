@@ -9,7 +9,7 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    - match: Host(`i.daco.dev`)
+    - match: Host(`ds.doany.io`)
       kind: Rule
       services:
         - name: discourse

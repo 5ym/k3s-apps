@@ -10,7 +10,7 @@ spec:
     certResolver: mydnschallenge
   routes:
     # 変更したら application.yaml の openproject.host も合わせること。
-    - match: Host(`o.doany.io`)
+    - match: Host(`ot.doany.io`)
       kind: Rule
       services:
         # chart が作る Service。fullnameOverride: openproject で名前を固定し、

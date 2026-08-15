@@ -8,15 +8,17 @@ k3s の上にセルフホストのアプリを載せるときの参考マニフ�
 
 | ディレクトリ | 出し方 | 構成 | 公開方法 |
 | --- | --- | --- | --- |
-| [discourse](discourse) | 素の YAML | Discourse + PostgreSQL + Redis + Sidekiq | `i.daco.dev` |
-| [jitsi](jitsi) | 素の YAML | Jitsi Meet（web / prosody / jicofo / jvb） | `j.doany.io` + JVB は LB `10000/udp` |
-| [misskey](misskey) | 素の YAML | Misskey + PostgreSQL + Redis | `m.doany.io` |
-| [mstdn](mstdn) | Helm [`mastodon`](https://github.com/mastodon/helm-charts) + 素の DB | Mastodon（web / streaming / sidekiq）+ PostgreSQL + Redis | `t.doany.io` |
-| [nextcloud](nextcloud) | Helm [`nextcloud`](https://github.com/nextcloud/helm) | Nextcloud（SQLite） | `n.doany.io` |
-| [openproject](openproject) | Helm [`openproject`](https://github.com/opf/helm-charts) | OpenProject + PostgreSQL + memcached | `o.doany.io` |
-| [speed](speed) | 素の YAML | LibreSpeed | `s.doany.io` |
+| [discourse](discourse) | 素の YAML | Discourse + PostgreSQL + Redis + Sidekiq | `ds.doany.io` |
+| [jitsi](jitsi) | 素の YAML | Jitsi Meet（web / prosody / jicofo / jvb） | `ji.doany.io` + JVB は LB `10000/udp` |
+| [misskey](misskey) | 素の YAML | Misskey + PostgreSQL + Redis | `my.doany.io` |
+| [mstdn](mstdn) | Helm [`mastodon`](https://github.com/mastodon/helm-charts) + 素の DB | Mastodon（web / streaming / sidekiq）+ PostgreSQL + Redis | `mn.doany.io` |
+| [nextcloud](nextcloud) | Helm [`nextcloud`](https://github.com/nextcloud/helm) | Nextcloud（SQLite） | `nd.doany.io` |
+| [openproject](openproject) | Helm [`openproject`](https://github.com/opf/helm-charts) | OpenProject + PostgreSQL + memcached | `ot.doany.io` |
+| [speed](speed) | 素の YAML | LibreSpeed | `sd.doany.io` |
 | [tinyproxy](tinyproxy) | 素の YAML | HTTP プロキシ | LB `8888/tcp`（Ingress なし） |
-| [watch](watch) | Helm [`prometheus`](https://github.com/prometheus-community/helm-charts) + [`grafana`](https://github.com/grafana-community/helm-charts) | Prometheus + Grafana + image-renderer | `w.doany.io` / `w.daco.dev` |
+| [watch](watch) | Helm [`prometheus`](https://github.com/prometheus-community/helm-charts) + [`grafana`](https://github.com/grafana-community/helm-charts) | Prometheus + Grafana + image-renderer | `ps.doany.io` / `ga.doany.io` |
+
+ホスト名は **アプリ名の頭と尻の 2 文字 + `.doany.io`**（discourse なら `ds.doany.io`）。1 つのディレクトリに 2 つ出すものはアプリ名ではなく中身の名前で付ける（[watch](watch) の `ps` = prometheus、`ga` = grafana）。
 
 Helm にしていないのは、**本家（配信元）が chart を出していない**もの。Discourse・Misskey・Jitsi・LibreSpeed・tinyproxy は公式 chart が無く、あるのは Bitnami や jitsi-contrib のような第三者のものだけなので、素の YAML のままにしてある。
 

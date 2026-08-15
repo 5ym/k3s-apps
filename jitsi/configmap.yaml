@@ -8,7 +8,7 @@ metadata:
 data:
   TZ: Asia/Tokyo
   # ingress.yaml の Host() と必ず揃えること。
-  PUBLIC_URL: https://j.doany.io
+  PUBLIC_URL: https://ji.doany.io
   # 各コンポーネントは k8s の Service 名で解決する
   XMPP_SERVER: prosody
   XMPP_BOSH_URL_BASE: http://prosody:5280

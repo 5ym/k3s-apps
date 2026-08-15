@@ -43,9 +43,9 @@ spec:
           enabled: false
 
         nextcloud:
-          host: n.doany.io
+          host: nd.doany.io
           trustedDomains:
-            - n.doany.io
+            - nd.doany.io
           # 管理者アカウントは secret.yaml から引く
           existingSecret:
             enabled: true

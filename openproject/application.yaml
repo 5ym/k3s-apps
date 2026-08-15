@@ -44,7 +44,7 @@ spec:
           enabled: false
 
         openproject:
-          host: o.doany.io
+          host: ot.doany.io
           https: true
           # セッションの署名鍵。secret.yaml から引く
           secretKeyBase:

@@ -9,7 +9,7 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    - match: Host(`w.doany.io`)
+    - match: Host(`ps.doany.io`)
       kind: Rule
       # Prometheus 自身には認証がないので bootstrap の forward-auth を挟む。
       # 不要なら middlewares ごと消す。
@@ -33,11 +33,10 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # Grafana だけ別ドメイン（w.daco.dev）。
     # Grafana 自身に認証があるので forward-auth は挟んでいない。
     # 変更したら application-grafana.yaml の grafana.ini の root_url も
     # 合わせること。
-    - match: Host(`w.daco.dev`)
+    - match: Host(`ga.doany.io`)
       kind: Rule
       services:
         # chart が作る Service。fullnameOverride: grafana で名前を固定し、

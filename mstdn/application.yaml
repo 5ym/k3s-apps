@@ -49,7 +49,7 @@ spec:
           enabled: false
 
         mastodon:
-          localDomain: t.doany.io
+          localDomain: mn.doany.io
           singleUserMode: false
           # Traefik の後ろに居るので、接続元は転送ヘッダから読む
           trustedProxyIp: 10.42.0.0/16

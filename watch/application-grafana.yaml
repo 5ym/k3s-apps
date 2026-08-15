@@ -49,8 +49,8 @@ spec:
         grafana.ini:
           server:
             # ingress.yaml の Grafana 側のホスト名。
-            # 素の頃は Prometheus 側の w.doany.io が入っていたので直した。
-            root_url: https://w.daco.dev
+            # 素の頃は Prometheus 側のホスト名が入っていたので直した。
+            root_url: https://ga.doany.io
           smtp:
             enabled: true
 
