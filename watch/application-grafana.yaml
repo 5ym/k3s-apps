@@ -50,7 +50,7 @@ spec:
           server:
             # ingress.yaml の Grafana 側のホスト名。
             # 素の頃は Prometheus 側のホスト名が入っていたので直した。
-            root_url: https://ga.doany.io
+            root_url: https://gn.doany.io
           smtp:
             enabled: true
 

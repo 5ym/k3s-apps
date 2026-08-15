@@ -9,16 +9,16 @@ k3s の上にセルフホストのアプリを載せるときの参考マニフ�
 | ディレクトリ | 出し方 | 構成 | 公開方法 |
 | --- | --- | --- | --- |
 | [discourse](discourse) | 素の YAML | Discourse + PostgreSQL + Redis + Sidekiq | `ds.doany.io` |
-| [jitsi](jitsi) | 素の YAML | Jitsi Meet（web / prosody / jicofo / jvb） | `ji.doany.io` + JVB は LB `10000/udp` |
-| [misskey](misskey) | 素の YAML | Misskey + PostgreSQL + Redis | `my.doany.io` |
+| [jitsi](jitsi) | 素の YAML | Jitsi Meet（web / prosody / jicofo / jvb） | `jt.doany.io` + JVB は LB `10000/udp` |
+| [misskey](misskey) | 素の YAML | Misskey + PostgreSQL + Redis | `mk.doany.io` |
 | [mstdn](mstdn) | Helm [`mastodon`](https://github.com/mastodon/helm-charts) + 素の DB | Mastodon（web / streaming / sidekiq）+ PostgreSQL + Redis | `mn.doany.io` |
 | [nextcloud](nextcloud) | Helm [`nextcloud`](https://github.com/nextcloud/helm) | Nextcloud（SQLite） | `nd.doany.io` |
 | [openproject](openproject) | Helm [`openproject`](https://github.com/opf/helm-charts) | OpenProject + PostgreSQL + memcached | `ot.doany.io` |
 | [speed](speed) | 素の YAML | LibreSpeed | `sd.doany.io` |
 | [tinyproxy](tinyproxy) | 素の YAML | HTTP プロキシ | LB `8888/tcp`（Ingress なし） |
-| [watch](watch) | Helm [`prometheus`](https://github.com/prometheus-community/helm-charts) + [`grafana`](https://github.com/grafana-community/helm-charts) | Prometheus + Grafana + image-renderer | `ps.doany.io` / `ga.doany.io` |
+| [watch](watch) | Helm [`prometheus`](https://github.com/prometheus-community/helm-charts) + [`grafana`](https://github.com/grafana-community/helm-charts) | Prometheus + Grafana + image-renderer | `ps.doany.io` / `gn.doany.io` |
 
-ホスト名は **アプリ名の頭と尻の 2 文字 + `.doany.io`**（discourse なら `ds.doany.io`）。1 つのディレクトリに 2 つ出すものはアプリ名ではなく中身の名前で付ける（[watch](watch) の `ps` = prometheus、`ga` = grafana）。
+ホスト名は **アプリ名の頭文字 + 発音上の最後の子音 + `.doany.io`** の 2 文字。綴りの末尾ではなく音で取るので、discourse は `de` ではなく `ds`、jitsi は `ji` ではなく `jt`、misskey は `my` ではなく `mk` になる。1 つのディレクトリから 2 つ出すものはディレクトリ名ではなく中身の名前で付ける（[watch](watch) の `ps` = prometheus、`gn` = grafana）。
 
 Helm にしていないのは、**本家（配信元）が chart を出していない**もの。Discourse・Misskey・Jitsi・LibreSpeed・tinyproxy は公式 chart が無く、あるのは Bitnami や jitsi-contrib のような第三者のものだけなので、素の YAML のままにしてある。
 

@@ -36,7 +36,7 @@ spec:
     # Grafana 自身に認証があるので forward-auth は挟んでいない。
     # 変更したら application-grafana.yaml の grafana.ini の root_url も
     # 合わせること。
-    - match: Host(`ga.doany.io`)
+    - match: Host(`gn.doany.io`)
       kind: Rule
       services:
         # chart が作る Service。fullnameOverride: grafana で名前を固定し、
