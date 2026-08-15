@@ -1,0 +1,171 @@
+# **監視一式は kube-prometheus-stack から出す。**
+#
+# Prometheus Operator + Prometheus + Alertmanager + Grafana +
+# node-exporter + kube-state-metrics + 既定のダッシュボードとアラートルールが
+# まとめて入っている。素の頃のように scrape 設定を手書きしなくて済むし、
+# 監視対象を足すときは ServiceMonitor / PodMonitor を置くだけで良い。
+#
+# ApplicationSet は `watch/` を「素のマニフェストの置き場」として読むので、
+# ここに Application を1つ置いて chart を指させる（App-of-Apps）。
+#
+# chart に無いもの（この家の事情）は同じ階層に素のまま残す:
+#   - ingress.yaml … Traefik の IngressRoute
+#   - pvc.yaml     … Grafana の PVC。Prometheus と Alertmanager の方は
+#                    Operator が StatefulSet の volumeClaimTemplate から作る
+#   - secret.yaml  … Grafana の管理者と SMTP。
+#                    SealedSecret 化してからコミットする
+#   - argocd.yaml  … bootstrap の ApplicationSet が読む、この置き場の設定
+#
+# **CRD が大きいので ServerSideApply=true が要る。** kube-prometheus-stack の
+# CRD は kubectl の client-side apply が使う last-applied-configuration
+# annotation の上限（262144 バイト）を超えるため、外すと sync が落ちる。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: watch
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: watch
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 88.3.0
+    helm:
+      releaseName: watch
+      valuesObject:
+        # リソース名の頭を `watch-` に固定する（Service 名は
+        # watch-prometheus / watch-alertmanager）。ingress.yaml がこの名前で
+        # 引いている。
+        fullnameOverride: watch
+
+        # --- k3s では取れないもの ---------------------------------------
+        # k3s は controller-manager / scheduler / proxy を1プロセスに畳んで
+        # いて、メトリクスの bind-address が既定で 127.0.0.1 なので外から
+        # 取れない。有効にすると down のままアラートが鳴り続けるので落とす。
+        # 取りたければ k3s server の起動引数に
+        #   --kube-controller-manager-arg=bind-address=0.0.0.0
+        #   --kube-scheduler-arg=bind-address=0.0.0.0
+        #   --kube-proxy-arg=metrics-bind-address=0.0.0.0
+        # を足してから true に戻すこと。
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        # k3s の既定のデータストアは sqlite で etcd が居ない。
+        # embedded etcd（HA 構成）にしている場合だけ true に戻す。
+        kubeEtcd:
+          enabled: false
+
+        # apiserver / kubelet / cAdvisor / CoreDNS はそのまま取れる
+        kubeApiServer:
+          enabled: true
+        kubelet:
+          enabled: true
+        coreDns:
+          enabled: true
+
+        prometheus:
+          prometheusSpec:
+            retention: 15d
+            # この namespace の外に置いた ServiceMonitor / PodMonitor /
+            # PrometheusRule も拾う。既定（true）だと chart が付けた
+            # release ラベル付きのものしか拾わない。
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            probeSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            scrapeConfigSelectorNilUsesHelmValues: false
+
+            # Operator は StatefulSet の volumeClaimTemplate で PVC を作る。
+            # existingClaim は無いので、pvc.yaml ではなくここで書く。
+            # StatefulSet が作った PVC は ArgoCD の管理外なので、
+            # Application を消しても prune されない。
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: local-path-retain
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 20Gi
+
+            # k3s 同梱 Traefik。HelmChartConfig で metrics.prometheus を
+            # 有効にしていない場合はここごと消すこと
+            # （有効でないと down のままになる）。
+            additionalScrapeConfigs:
+              - job_name: traefik
+                static_configs:
+                  - targets:
+                      - traefik.kube-system.svc.cluster.local:9100
+
+        alertmanager:
+          enabled: true
+          alertmanagerSpec:
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: local-path-retain
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 2Gi
+          # 既定の receiver は "null"（どこにも飛ばない）。
+          # 通知先を決めたら alertmanager.config をここに足すこと。
+
+        grafana:
+          enabled: true
+          # Service 名を `grafana` に固定する。ingress.yaml が引いている。
+          fullnameOverride: grafana
+          # chart 側の Ingress は使わない（ingress.yaml の IngressRoute で出す）
+          ingress:
+            enabled: false
+
+          # 管理者は secret.yaml から引く（既定の prom-operator を使わない）
+          admin:
+            existingSecret: grafana-admin
+            userKey: admin-user
+            passwordKey: admin-password
+
+          # chart には PVC を作らせず、pvc.yaml の local-path-retain を渡す
+          persistence:
+            enabled: true
+            type: pvc
+            existingClaim: grafana-data
+
+          env:
+            TZ: Asia/Tokyo
+            GF_EXTERNAL_IMAGE_STORAGE_PROVIDER: local
+
+          # SMTP の資格情報は secret.yaml（GF_SMTP_*）から envFrom で入れる
+          envFromSecret: grafana-smtp
+
+          grafana.ini:
+            server:
+              root_url: https://gn.doany.io
+            smtp:
+              enabled: true
+
+          imageRenderer:
+            enabled: true
+            env:
+              BROWSER_TZ: Asia/Tokyo
+
+          # Prometheus のデータソースと k8s の既定ダッシュボードは
+          # stack 側が入れてくれるので、こちらでは書かない
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # CRD が client-side apply の annotation 上限を超えるので必須
+      - ServerSideApply=true

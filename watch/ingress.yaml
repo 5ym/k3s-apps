@@ -17,10 +17,10 @@ spec:
         - name: forward-auth
           namespace: auth
       services:
-        # chart が作る Service。server.fullnameOverride: prometheus で名前を
-        # 固定し、port は chart 既定の 80（コンテナ側は 9090）。
-        - name: prometheus
-          port: 80
+        # chart が作る Service。fullnameOverride: watch なので watch-prometheus。
+        # port は chart 既定の 9090。
+        - name: watch-prometheus
+          port: 9090
 ---
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
@@ -34,12 +34,34 @@ spec:
     certResolver: mydnschallenge
   routes:
     # Grafana 自身に認証があるので forward-auth は挟んでいない。
-    # 変更したら application-grafana.yaml の grafana.ini の root_url も
-    # 合わせること。
+    # 変更したら application.yaml の grafana.ini の root_url も合わせること。
     - match: Host(`gn.doany.io`)
       kind: Rule
       services:
-        # chart が作る Service。fullnameOverride: grafana で名前を固定し、
-        # port は chart 既定の 80（コンテナ側は 3000）。
+        # grafana サブチャートが作る Service。
+        # grafana.fullnameOverride: grafana で名前を固定し、port は既定の 80。
         - name: grafana
           port: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: alertmanager
+  namespace: watch
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    certResolver: mydnschallenge
+  routes:
+    - match: Host(`ar.doany.io`)
+      kind: Rule
+      # Alertmanager 自身にも認証がないので forward-auth を挟む。
+      middlewares:
+        - name: forward-auth
+          namespace: auth
+      services:
+        # chart が作る Service。fullnameOverride: watch なので
+        # watch-alertmanager。port は chart 既定の 9093。
+        - name: watch-alertmanager
+          port: 9093

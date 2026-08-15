@@ -16,9 +16,9 @@ k3s の上にセルフホストのアプリを載せるときの参考マニフ�
 | [openproject](openproject) | Helm [`openproject`](https://github.com/opf/helm-charts) | OpenProject + PostgreSQL + memcached | `ot.doany.io` |
 | [speed](speed) | 素の YAML | LibreSpeed | `sd.doany.io` |
 | [tinyproxy](tinyproxy) | 素の YAML | HTTP プロキシ | LB `8888/tcp`（Ingress なし） |
-| [watch](watch) | Helm [`prometheus`](https://github.com/prometheus-community/helm-charts) + [`grafana`](https://github.com/grafana-community/helm-charts) | Prometheus + Grafana + image-renderer | `ps.doany.io` / `gn.doany.io` |
+| [watch](watch) | Helm [`kube-prometheus-stack`](https://github.com/prometheus-community/helm-charts) | Prometheus + Alertmanager + Grafana + node-exporter + kube-state-metrics | `ps.doany.io` / `gn.doany.io` / `ar.doany.io` |
 
-ホスト名は **アプリ名の頭文字 + 発音上の最後の子音 + `.doany.io`** の 2 文字。綴りの末尾ではなく音で取るので、discourse は `de` ではなく `ds`、jitsi は `ji` ではなく `jt`、misskey は `my` ではなく `mk` になる。1 つのディレクトリから 2 つ出すものはディレクトリ名ではなく中身の名前で付ける（[watch](watch) の `ps` = prometheus、`gn` = grafana）。
+ホスト名は **アプリ名の頭文字 + 発音上の最後の子音 + `.doany.io`** の 2 文字。綴りの末尾ではなく音で取るので、discourse は `de` ではなく `ds`、jitsi は `ji` ではなく `jt`、misskey は `my` ではなく `mk` になる。1 つのディレクトリから複数出すものはディレクトリ名ではなく中身の名前で付ける（[watch](watch) の `ps` = prometheus、`gn` = grafana、`ar` = alertmanager）。
 
 Helm にしていないのは、**本家（配信元）が chart を出していない**もの。Discourse・Misskey・Jitsi・LibreSpeed・tinyproxy は公式 chart が無く、あるのは Bitnami や jitsi-contrib のような第三者のものだけなので、素の YAML のままにしてある。
 
@@ -103,6 +103,9 @@ vim /tmp/misskey-secret.yaml
 ## 書くときにハマったところ
 
 - **`local-path` の PVC は root:root で切られる** … イメージが非 root で動くものは `securityContext.fsGroup` を合わせないと書き込めない（Prometheus は 65534、Grafana は 472）。chart から出す場合は chart 側が既定で合わせてくれる。
+- **kube-prometheus-stack は `ServerSideApply=true` が要る** … CRD が client-side apply の `last-applied-configuration` annotation の上限（262144 バイト）を超えるので、外すと sync が落ちる。
+- **k3s には controller-manager / scheduler / proxy の scrape 先が無い** … 1 プロセスに畳まれていて、メトリクスの bind-address が既定で `127.0.0.1`。有効のままだと down のままアラートが鳴り続けるので落としてある。etcd も既定のデータストアが sqlite なので居ない。
+- **Operator の PVC は `existingClaim` で渡せない** … Prometheus と Alertmanager は StatefulSet の `volumeClaimTemplate` からしか PVC を作れないので、`pvc.yaml` ではなく `application.yaml` 側に書く。StatefulSet が作った PVC は ArgoCD の管理外なので prune はされない。
 - **PVC を持つ Deployment は `strategy: Recreate`** … `ReadWriteOnce` なので、既定の RollingUpdate だと新旧 Pod が同じ PVC を掴もうとして新 Pod が起動できない。
 - **chart の PVC は `existingClaim` で外から渡す** … 多くの chart は共有ボリュームに `ReadWriteMany` を要求する（Mastodon の chart は `ReadWriteMany` 以外だと `fail` する）。`existingClaim` を渡すと chart は PVC を作らないので、この要求ごと回避できて `local-path-retain` の `ReadWriteOnce` がそのまま使える。
 - **chart の Service 名は `fullnameOverride` で固定する** … 既定だとリリース名が前に付いて `IngressRoute` から引けない。port も chart 既定（多くは 80 や 8080）でコンテナの port とは違う。
@@ -120,7 +123,8 @@ vim /tmp/misskey-secret.yaml
 - **すべての `secret.yaml`** … `CHANGE_ME` のままでは動かない。上の「Secret の扱い」の通り実値を入れて SealedSecret 化する。
 - **[openproject](openproject) を素の構成から移す場合** … chart は PostgreSQL を別 Pod（サブチャート）で立てるので、PVC の名前もレイアウトも変わる。旧 PVC から `pg_dump` を取って新しい方に流し込むこと。
 - **[jitsi](jitsi) を NAT の外から使う場合** … `JVB_ADVERTISE_IPS` はノードの IP（`status.hostIP`）が入る。グローバル IP を広告する必要があるなら `deployment.yaml` の `env` を消して `configmap.yaml` に直書きする。
-- **[watch](watch) の Traefik の scrape** … k3s 同梱 Traefik の `HelmChartConfig` で `metrics.prometheus` を有効にしていない場合は、`application-prometheus.yaml` の `extraScrapeConfigs` を消すこと（有効でないと down のままになる）。
+- **[watch](watch) の Traefik の scrape** … k3s 同梱 Traefik の `HelmChartConfig` で `metrics.prometheus` を有効にしていない場合は、`application.yaml` の `additionalScrapeConfigs` を消すこと（有効でないと down のままになる）。
+- **[watch](watch) の Alertmanager の通知先** … 既定の receiver は `null` でどこにも飛ばない。飛ばしたい先が決まったら `application.yaml` に `alertmanager.config` を足すこと。
 
 ## Renovate
 

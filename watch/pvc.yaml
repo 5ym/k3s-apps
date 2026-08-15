@@ -1,18 +1,7 @@
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: prometheus-data
-  namespace: watch
-  annotations:
-    argocd.argoproj.io/sync-options: Prune=false,Delete=false
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: local-path-retain
-  resources:
-    requests:
-      storage: 20Gi
----
+# Prometheus と Alertmanager の PVC はここには無い。Operator が StatefulSet の
+# volumeClaimTemplate から作るので、application.yaml 側で書いている。
+# StatefulSet が作った PVC は ArgoCD の管理外なので、Application を消しても
+# prune されない（このファイルの Prune=false と同じ効果になる）。
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
