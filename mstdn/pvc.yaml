@@ -28,8 +28,25 @@ spec:
     requests:
       storage: 5Gi
 ---
-# web と sidekiq が共有する。local-path は単一ノードなので
-# 同一ノードに載る限り ReadWriteOnce のまま両方から mount できる。
+# ここから下は chart 側（application.yaml の mastodon.pvc.*.existingClaim）に
+# 渡す。chart は existingClaim を渡すと PVC を作らないので、ReadWriteMany の
+# 要求も掛からない。local-path は単一ノードなので、web と sidekiq が同一
+# ノードに載る限り ReadWriteOnce のまま両方から mount できる。
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mstdn-assets
+  namespace: mstdn
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path-retain
+  resources:
+    requests:
+      storage: 10Gi
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

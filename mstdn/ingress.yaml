@@ -9,18 +9,20 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # !! 注意: m.doany.io は misskey とホスト名が衝突する。両方同時には適用しないこと。
     # IngressRoute は match の長さで優先度が決まらないので、
     # streaming 側を先に評価させるため priority を明示している。
-    - match: Host(`m.doany.io`) && PathPrefix(`/api/v1/streaming`)
+    #
+    # 変更したら application.yaml の mastodon.localDomain も合わせること。
+    # Service 名と port は chart が出すもの（fullnameOverride: mstdn）。
+    - match: Host(`t.doany.io`) && PathPrefix(`/api/v1/streaming`)
       kind: Rule
       priority: 20
       services:
         - name: mstdn-streaming
           port: 4000
-    - match: Host(`m.doany.io`)
+    - match: Host(`t.doany.io`)
       kind: Rule
       priority: 10
       services:
-        - name: mstdn
+        - name: mstdn-web
           port: 3000

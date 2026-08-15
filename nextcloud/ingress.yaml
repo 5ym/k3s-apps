@@ -9,9 +9,11 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # TODO: プレースホルダのままなので実ホスト名に変更すること。
-    - match: Host(`nextcloud.example.com`)
+    # 変更したら application.yaml の nextcloud.host / trustedDomains も合わせること。
+    - match: Host(`n.doany.io`)
       kind: Rule
       services:
+        # chart が作る Service。fullnameOverride: nextcloud で名前を固定し、
+        # port は chart 既定の 8080（コンテナ側は 80）。
         - name: nextcloud
-          port: 80
+          port: 8080

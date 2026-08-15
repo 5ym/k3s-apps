@@ -9,9 +9,8 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # TODO: example.test はプレースホルダ。実ホスト名に変更すること。
     # 変更したら configmap.yaml の PUBLIC_URL も合わせること。
-    - match: Host(`example.test`)
+    - match: Host(`j.doany.io`)
       kind: Rule
       services:
         - name: jw

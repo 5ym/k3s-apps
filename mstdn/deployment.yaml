@@ -1,3 +1,5 @@
+# Mastodon 本体（web / streaming / sidekiq）は chart 側（application.yaml）が出す。
+# ここに残しているのは chart に同梱されていない PostgreSQL と Redis だけ。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,19 +23,29 @@ spec:
           env:
             - name: TZ
               value: Asia/Tokyo
+            # postgres:18 は既定の PGDATA が変わっているので明示する
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
+            # ユーザ名とパスワードは chart 側と同じ Secret から引く
+            # （application.yaml の postgresql.existingSecret）
+            - name: POSTGRES_DB
+              value: mastodon
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mstdn-db-auth
+                  key: username
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mstdn-env
-                  key: DB_PASS
+                  name: mstdn-db-auth
+                  key: password
           ports:
             - name: postgres
               containerPort: 5432
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "postgres"]
+              command: ["sh", "-c", 'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"']
             periodSeconds: 5
             failureThreshold: 20
           volumeMounts:
@@ -44,6 +56,7 @@ spec:
           persistentVolumeClaim:
             claimName: mstdn-db
 ---
+# chart は Redis のパスワードを必須にしているので requirepass で立てる。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -64,15 +77,21 @@ spec:
       containers:
         - name: redis
           image: redis:8.10-alpine
+          command: ["sh", "-c", 'exec redis-server --requirepass "$REDIS_PASSWORD"']
           env:
             - name: TZ
               value: Asia/Tokyo
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mstdn-redis-auth
+                  key: password
           ports:
             - name: redis
               containerPort: 6379
           readinessProbe:
             exec:
-              command: ["redis-cli", "ping"]
+              command: ["sh", "-c", 'redis-cli --no-auth-warning -a "$REDIS_PASSWORD" ping']
             periodSeconds: 5
             failureThreshold: 20
           volumeMounts:
@@ -82,127 +101,3 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: mstdn-redis
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mstdn
-  namespace: mstdn
-spec:
-  replicas: 1
-  strategy:
-    type: Recreate
-  selector:
-    matchLabels:
-      app: mstdn
-  template:
-    metadata:
-      labels:
-        app: mstdn
-    spec:
-      containers:
-        - name: mstdn
-          image: tootsuite/mastodon
-          command:
-            - bash
-            - -c
-            - rm -f /mastodon/tmp/pids/server.pid; bundle exec rails s -p 3000
-          envFrom:
-            - secretRef:
-                name: mstdn-env
-          env:
-            - name: TZ
-              value: Asia/Tokyo
-          ports:
-            - name: http
-              containerPort: 3000
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 3000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            failureThreshold: 30
-          volumeMounts:
-            - name: system
-              mountPath: /mastodon/public/system
-      volumes:
-        - name: system
-          persistentVolumeClaim:
-            claimName: mstdn-system
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mstdn-streaming
-  namespace: mstdn
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: mstdn-streaming
-  template:
-    metadata:
-      labels:
-        app: mstdn-streaming
-    spec:
-      containers:
-        - name: streaming
-          image: tootsuite/mastodon
-          command:
-            - node
-            - ./streaming
-          envFrom:
-            - secretRef:
-                name: mstdn-env
-          env:
-            - name: TZ
-              value: Asia/Tokyo
-          ports:
-            - name: streaming
-              containerPort: 4000
-          readinessProbe:
-            httpGet:
-              path: /api/v1/streaming/health
-              port: 4000
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            failureThreshold: 30
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: sidekiq
-  namespace: mstdn
-spec:
-  replicas: 1
-  strategy:
-    type: Recreate
-  selector:
-    matchLabels:
-      app: sidekiq
-  template:
-    metadata:
-      labels:
-        app: sidekiq
-    spec:
-      containers:
-        - name: sidekiq
-          image: tootsuite/mastodon
-          command:
-            - bundle
-            - exec
-            - sidekiq
-          envFrom:
-            - secretRef:
-                name: mstdn-env
-          env:
-            - name: TZ
-              value: Asia/Tokyo
-          volumeMounts:
-            - name: system
-              mountPath: /mastodon/public/system
-      volumes:
-        - name: system
-          persistentVolumeClaim:
-            claimName: mstdn-system

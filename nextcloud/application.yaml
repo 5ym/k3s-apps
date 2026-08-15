@@ -1,0 +1,85 @@
+# **Nextcloud 本体は本家の Helm chart から出す。**
+#
+# ApplicationSet は `nextcloud/` を「素のマニフェストの置き場」として読むので、
+# ここに Application を1つ置いて chart を指させる（App-of-Apps）。
+# ApplicationSet はこのファイルを素の YAML として同期し、この Application が
+# chart を展開する。
+#
+# chart に無いもの（この家の事情）は同じ階層に素のまま残す:
+#   - ingress.yaml … Traefik の IngressRoute。chart は networking.k8s.io/v1
+#                    Ingress しか作れないので使わない
+#   - pvc.yaml     … local-path-retain の PVC。chart には existingClaim で渡す
+#   - secret.yaml  … 管理者アカウント。SealedSecret 化してからコミットする
+#   - argocd.yaml  … bootstrap の ApplicationSet が読む、この置き場の設定
+#
+# **この家の値は下の `helm.valuesObject` にインラインで持つ。** 別ファイルにしないのは、
+# ApplicationSet が `nextcloud/*.yaml` を全部マニフェストとして読むため（値ファイルは
+# kind が無いので置けない）。chart の既定値の上に重なる。
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nextcloud
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nextcloud
+  source:
+    repoURL: https://nextcloud.github.io/helm/
+    chart: nextcloud
+    targetRevision: 9.2.5
+    helm:
+      releaseName: nextcloud
+      valuesObject:
+        # Service 名を素の頃と同じ `nextcloud` に固定する。ingress.yaml が
+        # この名前で引いている。
+        fullnameOverride: nextcloud
+
+        # chart 側の Ingress は使わない（ingress.yaml の IngressRoute で出す）
+        ingress:
+          enabled: false
+
+        nextcloud:
+          host: n.doany.io
+          trustedDomains:
+            - n.doany.io
+          # 管理者アカウントは secret.yaml から引く
+          existingSecret:
+            enabled: true
+            secretName: nextcloud
+            usernameKey: nextcloud-username
+            passwordKey: nextcloud-password
+          extraEnv:
+            - name: TZ
+              value: Asia/Tokyo
+
+        # Traefik で TLS を終端しているので、生成する URL を https に固定する
+        # （素の頃の OVERWRITEPROTOCOL=https に相当）
+        phpClientHttpsFix:
+          enabled: true
+          protocol: https
+
+        # 素の頃と同じく SQLite。別 DB に移すときは externalDatabase を使う
+        internalDatabase:
+          enabled: true
+
+        # chart には PVC を作らせず、pvc.yaml の local-path-retain を渡す
+        persistence:
+          enabled: true
+          existingClaim: nextcloud
+
+        # 同梱の cron は /var/www/html を掴むので、PVC が ReadWriteOnce でも
+        # web と同じノードに載る限り動く（単一ノード想定）
+        cronjob:
+          enabled: true
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # 素のマニフェストで入っていた同名のリソースを chart 側が引き取る
+      - ServerSideApply=true

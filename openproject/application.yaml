@@ -1,0 +1,95 @@
+# **OpenProject 本体は本家の Helm chart から出す。**
+#
+# ApplicationSet は `openproject/` を「素のマニフェストの置き場」として読むので、
+# ここに Application を1つ置いて chart を指させる（App-of-Apps）。
+# ApplicationSet はこのファイルを素の YAML として同期し、この Application が
+# chart を展開する。
+#
+# 素の頃は PostgreSQL 同梱の all-in-one イメージを使っていたが、chart は
+# PostgreSQL / memcached を別 Pod（サブチャート）で立てる。**PVC の名前も
+# レイアウトも変わるので、既存データはそのままでは引き継げない。**
+# 移行するなら旧 PVC から pg_dump を取って新しい方に流し込むこと。
+#
+# chart に無いもの（この家の事情）は同じ階層に素のまま残す:
+#   - ingress.yaml … Traefik の IngressRoute。chart は networking.k8s.io/v1
+#                    Ingress しか作れないので使わない
+#   - secret.yaml  … SECRET_KEY_BASE と初期管理者パスワード。
+#                    SealedSecret 化してからコミットする
+#   - argocd.yaml  … bootstrap の ApplicationSet が読む、この置き場の設定
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openproject
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openproject
+  source:
+    repoURL: https://charts.openproject.org
+    chart: openproject
+    targetRevision: 13.10.2
+    helm:
+      releaseName: openproject
+      valuesObject:
+        # Service 名を素の頃と同じ `openproject` に固定する。ingress.yaml が
+        # この名前で引いている。
+        fullnameOverride: openproject
+
+        # chart 側の Ingress は使わない（ingress.yaml の IngressRoute で出す）
+        ingress:
+          enabled: false
+
+        openproject:
+          host: o.doany.io
+          https: true
+          # セッションの署名鍵。secret.yaml から引く
+          secretKeyBase:
+            existingSecret: openproject
+            secretKey: secret-key-base
+          admin_user:
+            name: "OpenProject Admin"
+            mail: admin@doany.io
+            secret: openproject
+            secretKeys:
+              password: admin-password
+
+        environment:
+          TZ: Asia/Tokyo
+
+        # 添付ファイルの置き場。local-path は単一ノードなので ReadWriteOnce。
+        # web / worker / cron が同じノードに載る限り共有できる。
+        # 誤削除防止に Prune=false,Delete=false を付ける（素の pvc.yaml と同じ扱い）。
+        persistence:
+          enabled: true
+          accessModes:
+            - ReadWriteOnce
+          size: 20Gi
+          storageClassName: local-path-retain
+          annotations:
+            argocd.argoproj.io/sync-options: Prune=false,Delete=false
+
+        # 同梱の PostgreSQL。イメージは chart 既定の bitnamilegacy をそのまま使う
+        postgresql:
+          bundled: true
+          primary:
+            persistence:
+              storageClass: local-path-retain
+              size: 20Gi
+              annotations:
+                argocd.argoproj.io/sync-options: Prune=false,Delete=false
+
+        # 同梱の memcached（キャッシュのみなので永続化しない）
+        memcached:
+          bundled: true
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # 素のマニフェストで入っていた同名のリソースを chart 側が引き取る
+      - ServerSideApply=true

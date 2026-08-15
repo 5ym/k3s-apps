@@ -1,0 +1,106 @@
+# **Mastodon 本体（web / streaming / sidekiq）は本家の Helm chart から出す。**
+#
+# ApplicationSet は `mstdn/` を「素のマニフェストの置き場」として読むので、
+# ここに Application を1つ置いて chart を指させる（App-of-Apps）。
+# ApplicationSet はこのファイルを素の YAML として同期し、この Application が
+# chart を展開する。
+#
+# **chart は PostgreSQL と Redis を同梱していない。** そこだけは素のまま
+# 同じ階層に残して、下の postgresql / redis で Service 名を指している。
+#
+# chart に無いもの（この家の事情）は同じ階層に素のまま残す:
+#   - deployment.yaml / service.yaml … PostgreSQL と Redis
+#   - ingress.yaml … Traefik の IngressRoute。chart は Ingress か Gateway API
+#                    しか作れないので、どちらも無効にして使わない
+#   - pvc.yaml     … local-path-retain の PVC。chart には existingClaim で渡す
+#   - secret.yaml  … 鍵と DB / Redis のパスワード。
+#                    SealedSecret 化してからコミットする
+#   - argocd.yaml  … bootstrap の ApplicationSet が読む、この置き場の設定
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mstdn
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mstdn
+  source:
+    repoURL: https://mastodon.github.io/helm-charts/
+    chart: mastodon
+    targetRevision: 1.1.3
+    helm:
+      releaseName: mstdn
+      valuesObject:
+        # Service 名を `mstdn-web` / `mstdn-streaming` に固定する。
+        # ingress.yaml がこの名前で引いている。
+        fullnameOverride: mstdn
+
+        timezone: Asia/Tokyo
+
+        # 出し方はどちらも chart に任せない（ingress.yaml の IngressRoute で出す）。
+        # httproute は chart 既定が true なので必ず落とすこと。
+        ingress:
+          enabled: false
+        httproute:
+          enabled: false
+
+        mastodon:
+          localDomain: t.doany.io
+          singleUserMode: false
+          # Traefik の後ろに居るので、接続元は転送ヘッダから読む
+          trustedProxyIp: 10.42.0.0/16
+
+          # 鍵は secret.yaml から引く
+          secrets:
+            existingSecret: mstdn-secrets
+
+          # オブジェクトストレージは使わず PVC に置く
+          s3:
+            enabled: false
+          pvc:
+            enabled: true
+            # local-path は単一ノードなので ReadWriteOnce。
+            # existingClaim を渡すと chart は PVC を作らない（RWX の要求も
+            # 掛からない）ので、pvc.yaml の RWO をそのまま使える。
+            assets:
+              existingClaim: mstdn-assets
+            system:
+              existingClaim: mstdn-system
+
+          smtp:
+            existingSecret: mstdn-smtp
+
+          hooks:
+            # db:prepare は pre-install フックだが、ArgoCD は pre-install も
+            # pre-upgrade も PreSync として毎回回すので落としておく
+            # （chart の values.yaml が明示的にそう勧めている）。
+            # 初回だけ web Pod の中で手で流すこと:
+            #   rails db:prepare
+            dbPrepare:
+              enabled: false
+            # マイグレーションは毎回流して良い
+            dbMigrate:
+              enabled: true
+
+        # 同じ階層の素の PostgreSQL / Redis を指す
+        postgresql:
+          hostname: db
+          port: 5432
+          database: mastodon
+          existingSecret: mstdn-db-auth
+        redis:
+          hostname: redis
+          port: 6379
+          existingSecret: mstdn-redis-auth
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # 素のマニフェストで入っていた同名のリソースを chart 側が引き取る
+      - ServerSideApply=true

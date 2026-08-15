@@ -138,6 +138,20 @@ spec:
                 name: jitsi-config
             - secretRef:
                 name: jitsi-secrets
+          env:
+            # JVB がクライアントに広告する到達可能な IP。ServiceLB で
+            # externalTrafficPolicy: Local にしてあるので、メディアは
+            # Pod が載っているノードにそのまま着く。そのノードの IP を
+            # Downward API で入れる（ハードコードしない）。
+            #
+            # NAT の外から使う場合は、ここを消して configmap.yaml に
+            # JVB_ADVERTISE_IPS でグローバル IP を直書きすること。
+            # env は envFrom より優先されるので、ConfigMap 側に置いても
+            # この定義が残っている限り上書きされない。
+            - name: JVB_ADVERTISE_IPS
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
           ports:
             - name: media
               containerPort: 10000

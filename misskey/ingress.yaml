@@ -9,8 +9,7 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
-    # !! 注意: m.doany.io は mstdn の IngressRoute とホスト名が衝突する。
-    #    両方同時には適用しないこと。
+    # 変更したら secret.yaml の default.yml の url も合わせること。
     - match: Host(`m.doany.io`)
       kind: Rule
       services:

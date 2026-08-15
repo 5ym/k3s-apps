@@ -7,8 +7,8 @@ metadata:
   namespace: jitsi
 data:
   TZ: Asia/Tokyo
-  # TODO: example.test はプレースホルダ。実ホスト名に変更すること。
-  PUBLIC_URL: https://example.test
+  # ingress.yaml の Host() と必ず揃えること。
+  PUBLIC_URL: https://j.doany.io
   # 各コンポーネントは k8s の Service 名で解決する
   XMPP_SERVER: prosody
   XMPP_BOSH_URL_BASE: http://prosody:5280
@@ -30,6 +30,9 @@ data:
   JIBRI_XMPP_GROUP: jibri
   JVB_PORT: "10000"
   JVB_TCP_HARVESTER_DISABLED: "true"
+  # 宅内のプライベート IP も候補に載せる（JVB_ADVERTISE_IPS は
+  # deployment.yaml で Downward API からノードの IP を入れている）。
+  JVB_ADVERTISE_PRIVATE_CANDIDATES: "true"
   ENABLE_AUTH: "0"
   ENABLE_GUESTS: "0"
   ENABLE_LETSENCRYPT: "0"
@@ -37,5 +40,3 @@ data:
   ENABLE_XMPP_WEBSOCKET: "1"
   ENABLE_COLIBRI_WEBSOCKET: "1"
   DISABLE_HTTPS: "1"
-  # TODO: JVB が広告する到達可能な IP。ノードのグローバル/LAN IP を入れること。
-  JVB_ADVERTISE_IPS: ""

@@ -9,8 +9,11 @@ spec:
   tls:
     certResolver: mydnschallenge
   routes:
+    # 変更したら application.yaml の openproject.host も合わせること。
     - match: Host(`o.doany.io`)
       kind: Rule
       services:
+        # chart が作る Service。fullnameOverride: openproject で名前を固定し、
+        # port は chart 既定の 8080。
         - name: openproject
-          port: 80
+          port: 8080

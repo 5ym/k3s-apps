@@ -1,0 +1,17 @@
+# このディレクトリの ArgoCD 配置。5ym/bootstrap の ApplicationSet がこのファイルを
+# 読んで Application を組み立てる。どう配られるかはクラスタ側でも bootstrap 側でもなく
+# ここで決まる。
+#
+# Namespace のマニフェストは要らない。ApplicationSet の CreateNamespace が
+# 下の namespace を見て作る。
+name: discourse
+namespace: discourse
+
+# マニフェストの置き場。リポジトリルートからの相対パス。
+sourcePath: discourse
+recurse: false
+
+# autoSync: false にすると UI からの手動 sync になる。
+autoSync: true
+prune: true
+selfHeal: true

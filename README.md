@@ -2,19 +2,23 @@
 
 k3s の上にセルフホストのアプリを載せるときの参考マニフェスト集。
 
-1 アプリ = 1 ディレクトリ = 1 namespace で完結していて、`kubectl apply -f <name>/` だけで立ち上がる。Helm も Kustomize も使っていない素の YAML なので、必要なところをコピーして書き換える使い方を想定している。
+1 アプリ = 1 ディレクトリ = 1 namespace = 1 ArgoCD Application で完結している。**どう配られるかは各ディレクトリの `argocd.yaml` で決まる**ので、クラスタ側にも [5ym/bootstrap](https://github.com/5ym/bootstrap) 側にも設定を持たせない。
 
-| ディレクトリ | 構成 | 公開方法 |
-| --- | --- | --- |
-| [discourse](discourse) | Discourse + PostgreSQL + Redis + Sidekiq | `i.daco.dev` |
-| [jitsi](jitsi) | Jitsi Meet（web / prosody / jicofo / jvb） | ⚠️ 未設定 + JVB は LB `10000/udp` |
-| [misskey](misskey) | Misskey + PostgreSQL + Redis | ⚠️ `m.doany.io`（衝突） |
-| [mstdn](mstdn) | Mastodon（web / streaming / sidekiq）+ PostgreSQL + Redis | ⚠️ `m.doany.io`（衝突） |
-| [nextcloud](nextcloud) | Nextcloud | ⚠️ 未設定 |
-| [openproject](openproject) | OpenProject（all-in-one） | `o.doany.io` |
-| [speed](speed) | LibreSpeed | `s.doany.io` |
-| [tinyproxy](tinyproxy) | HTTP プロキシ | LB `8888/tcp`（Ingress なし） |
-| [watch](watch) | Prometheus + Grafana + image-renderer | `w.doany.io` / `w.daco.dev` |
+本家が Helm chart を出しているアプリはその chart から出す。chart が無いアプリだけ素の YAML で書いてある。
+
+| ディレクトリ | 出し方 | 構成 | 公開方法 |
+| --- | --- | --- | --- |
+| [discourse](discourse) | 素の YAML | Discourse + PostgreSQL + Redis + Sidekiq | `i.daco.dev` |
+| [jitsi](jitsi) | 素の YAML | Jitsi Meet（web / prosody / jicofo / jvb） | `j.doany.io` + JVB は LB `10000/udp` |
+| [misskey](misskey) | 素の YAML | Misskey + PostgreSQL + Redis | `m.doany.io` |
+| [mstdn](mstdn) | Helm [`mastodon`](https://github.com/mastodon/helm-charts) + 素の DB | Mastodon（web / streaming / sidekiq）+ PostgreSQL + Redis | `t.doany.io` |
+| [nextcloud](nextcloud) | Helm [`nextcloud`](https://github.com/nextcloud/helm) | Nextcloud（SQLite） | `n.doany.io` |
+| [openproject](openproject) | Helm [`openproject`](https://github.com/opf/helm-charts) | OpenProject + PostgreSQL + memcached | `o.doany.io` |
+| [speed](speed) | 素の YAML | LibreSpeed | `s.doany.io` |
+| [tinyproxy](tinyproxy) | 素の YAML | HTTP プロキシ | LB `8888/tcp`（Ingress なし） |
+| [watch](watch) | Helm [`prometheus`](https://github.com/prometheus-community/helm-charts) + [`grafana`](https://github.com/grafana-community/helm-charts) | Prometheus + Grafana + image-renderer | `w.doany.io` / `w.daco.dev` |
+
+Helm にしていないのは、**本家（配信元）が chart を出していない**もの。Discourse・Misskey・Jitsi・LibreSpeed・tinyproxy は公式 chart が無く、あるのは Bitnami や jitsi-contrib のような第三者のものだけなので、素の YAML のままにしてある。
 
 ## クラスタ側の前提
 
@@ -22,6 +26,7 @@ k3s の上にセルフホストのアプリを載せるときの参考マニフ�
 
 | 前提 | マニフェスト側の記述 |
 | --- | --- |
+| **ArgoCD** の ApplicationSet が各ディレクトリの `argocd.yaml` を読んで Application を組み立てる | `*/argocd.yaml` |
 | **Ingress** は Traefik CRD（`traefik.io/v1alpha1 IngressRoute`）。`networking.k8s.io/v1 Ingress` は使わない | `*/ingress.yaml` |
 | **TLS** は certResolver `mydnschallenge`（Cloudflare DNS-01）。entryPoint は `websecure` のみで、`web` → `websecure` のリダイレクトは Traefik 側で設定済み | `tls.certResolver` |
 | **StorageClass** は `local-path-retain`（`reclaimPolicy: Retain`）。単一ノード想定で `ReadWriteOnce` | `*/pvc.yaml` の `storageClassName` |
@@ -34,23 +39,49 @@ k3s の上にセルフホストのアプリを載せるときの参考マニフ�
 
 | ファイル | 中身 |
 | --- | --- |
-| `namespace.yaml` | アプリ名と同じ namespace |
+| `argocd.yaml` | この置き場の ArgoCD 配置。bootstrap の ApplicationSet が読む |
+| `application.yaml` | Helm chart を指す `Application`。chart から出すアプリだけ |
 | `deployment.yaml` | アプリ本体と DB / Redis などを `---` 区切りで 1 ファイルに |
 | `service.yaml` | 基本は ClusterIP。Traefik を通さないものだけ `LoadBalancer` |
 | `pvc.yaml` | `local-path-retain`。誤削除防止に `argocd.argoproj.io/sync-options: Prune=false,Delete=false` を付けている |
 | `secret.yaml` | プレースホルダ（`CHANGE_ME`）。SealedSecret 化してからコミットする |
 | `ingress.yaml` | `IngressRoute`。外に出さないアプリには置かない |
-| `configmap.yaml` | 設定ファイルを渡すものだけ（jitsi / watch） |
+| `configmap.yaml` | 設定ファイルを渡すものだけ（jitsi） |
+
+Namespace のマニフェストは持たない。ApplicationSet の `CreateNamespace` が `argocd.yaml` の `namespace` を見て作る。PVC には `Prune=false` を付けてあるので、Application を消しても中身ごと消えることは無い。
+
+### `argocd.yaml`
+
+```yaml
+name: <アプリ名>          # Application の名前
+namespace: <アプリ名>     # 配り先の namespace（CreateNamespace が作る）
+sourcePath: <アプリ名>    # マニフェストの置き場（リポジトリルートからの相対）
+recurse: false
+autoSync: true           # false にすると UI からの手動 sync になる
+prune: true
+selfHeal: true
+```
+
+### `application.yaml`
+
+ApplicationSet はディレクトリを「素のマニフェストの置き場」として読むだけなので、chart から出したいアプリはここに `Application` を 1 つ置いて chart を指させる（App-of-Apps）。**この家の値は `helm.valuesObject` にインラインで持つ。** 別ファイルにしないのは、ApplicationSet が `<name>/*.yaml` を全部マニフェストとして読むため（値ファイルは kind が無いので置けない）。
+
+chart に入れられないもの（`IngressRoute`、`local-path-retain` の PVC、SealedSecret）は同じ階層に素のまま残して、chart 側からは `existingClaim` / `existingSecret` で引く。
 
 ## デプロイ
 
-namespace ごとに独立しているので、必要なものだけ apply する。
+ArgoCD が `argocd.yaml` を見て勝手に配る。手で何かする必要は無い。
+
+手元で中身を確かめたいときは、`argocd.yaml` を除いて apply する（`argocd.yaml` は kind を持たない設定ファイルなので、そのまま `kubectl apply -f <name>/` に渡すと落ちる）。
 
 ```sh
-kubectl apply -f <name>/
-```
+# chart を使っていないアプリ（argocd.yaml だけ外して apply する）
+kubectl apply $(ls <name>/*.yaml | grep -v argocd.yaml | sed 's/^/-f /')
 
-ArgoCD で管理する場合は `<name>` を source path にした Application を各自作成する（このリポジトリには Application マニフェストは含めていない）。
+# chart を使っているアプリは helm template で展開してから見る
+helm template <name> <chart> --repo <repoURL> --version <targetRevision> \
+  -f <(yq '.spec.source.helm.valuesObject' <name>/application.yaml)
+```
 
 ## Secret の扱い
 
@@ -65,26 +96,30 @@ vim /tmp/misskey-secret.yaml
 ./bootstrap/kubeseal.sh /tmp/misskey-secret.yaml misskey/secret.yaml
 ```
 
-生成方法が決まっているものは各 `secret.yaml` の先頭コメントに書いてある（`openssl rand -hex 64`、`rake secret`、`php artisan key:generate` など）。
+生成方法が決まっているものは各 `secret.yaml` の先頭コメントに書いてある（`openssl rand -hex 64`、`rake secret`、`rails db:encryption:init` など）。
 
 ## 書くときにハマったところ
 
-- **`local-path` の PVC は root:root で切られる** … イメージが非 root で動くものは `securityContext.fsGroup` を合わせないと書き込めない（Prometheus は 65534、Grafana は 472）。
+- **`local-path` の PVC は root:root で切られる** … イメージが非 root で動くものは `securityContext.fsGroup` を合わせないと書き込めない（Prometheus は 65534、Grafana は 472）。chart から出す場合は chart 側が既定で合わせてくれる。
 - **PVC を持つ Deployment は `strategy: Recreate`** … `ReadWriteOnce` なので、既定の RollingUpdate だと新旧 Pod が同じ PVC を掴もうとして新 Pod が起動できない。
+- **chart の PVC は `existingClaim` で外から渡す** … 多くの chart は共有ボリュームに `ReadWriteMany` を要求する（Mastodon の chart は `ReadWriteMany` 以外だと `fail` する）。`existingClaim` を渡すと chart は PVC を作らないので、この要求ごと回避できて `local-path-retain` の `ReadWriteOnce` がそのまま使える。
+- **chart の Service 名は `fullnameOverride` で固定する** … 既定だとリリース名が前に付いて `IngressRoute` から引けない。port も chart 既定（多くは 80 や 8080）でコンテナの port とは違う。
 - **`postgres:18` は既定の `PGDATA` が変わっている** … `/var/lib/postgresql/data/pgdata` を明示している。既存データを移す場合は PVC 直下ではなく `pgdata/` の下に置くこと。
 - **`IngressRoute` は match の長さで優先度が決まらない** … Mastodon の `/api/v1/streaming` のようにパスで振り分けるときは `priority` を明示する。
 - **Traefik を通さない通信は ServiceLB で出す** … HTTP 以外（tinyproxy の TCP、JVB の UDP）は `type: LoadBalancer` + `externalTrafficPolicy: Local`。k3s の ServiceLB がノードのポートを直接開ける。
+- **JVB が広告する IP は Downward API で入れる** … `externalTrafficPolicy: Local` なのでメディアは Pod が載っているノードに直接着く。そのノードの IP を `status.hostIP` から `JVB_ADVERTISE_IPS` に入れているので、ノードの IP を直書きしなくて済む。NAT の外から使う場合だけ `configmap.yaml` にグローバル IP を書く。
+- **ArgoCD では Helm の `pre-install` フックを当てにしない** … ArgoCD は `pre-install` も `pre-upgrade` も PreSync として毎回回す。Mastodon の `db:prepare`（`pre-install` のみ）は落としてあるので、初回だけ手で流すこと。
 - **起動順を待つ仕組みは無い** … DB 待ちが要るものは `readinessProbe` を置いて、失敗中の再起動に任せる。
 - **設定ファイルが秘密を含むなら ConfigMap ではなく Secret でマウントする** … Misskey の `default.yml` は DB パスワード入りなので Secret 側に置いている。
 - **アプリ本体のディレクトリをボリュームで覆わない** … LibreSpeed の `/var/www/html` のように、イメージ内にアプリが入っている場所にマウントすると空になる。永続化するのはデータの場所だけ（`/database`）。
 
 ## 適用前に直すところ
 
-- **ホスト名の衝突** … `m.doany.io` を [misskey](misskey) と [mstdn](mstdn) が両方使っている。同時に適用しない。
-- **プレースホルダのままのホスト名** … [jitsi](jitsi)（`example.test`）、[nextcloud](nextcloud)（`nextcloud.example.com`）。`.test` や `.example.com` のままでは DNS-01 で証明書を取得できない。
-- **[jitsi](jitsi) の `JVB_ADVERTISE_IPS` が空** … ノードの到達可能な IP を入れないとメディアが繋がらない。
-- **[watch](watch) の scrape 対象** … `configmap.yaml` は最小構成しか入っていない。
+- **すべての `secret.yaml`** … `CHANGE_ME` のままでは動かない。上の「Secret の扱い」の通り実値を入れて SealedSecret 化する。
+- **[openproject](openproject) を素の構成から移す場合** … chart は PostgreSQL を別 Pod（サブチャート）で立てるので、PVC の名前もレイアウトも変わる。旧 PVC から `pg_dump` を取って新しい方に流し込むこと。
+- **[jitsi](jitsi) を NAT の外から使う場合** … `JVB_ADVERTISE_IPS` はノードの IP（`status.hostIP`）が入る。グローバル IP を広告する必要があるなら `deployment.yaml` の `env` を消して `configmap.yaml` に直書きする。
+- **[watch](watch) の Traefik の scrape** … k3s 同梱 Traefik の `HelmChartConfig` で `metrics.prometheus` を有効にしていない場合は、`application-prometheus.yaml` の `extraScrapeConfigs` を消すこと（有効でないと down のままになる）。
 
 ## Renovate
 
-[5ym/renovate-config](https://github.com/5ym/renovate-config) を継承し、`**/*.yaml` の `image:` を追跡する。
+[5ym/renovate-config](https://github.com/5ym/renovate-config) を継承し、`**/*.yaml` の `image:` と、`application*.yaml` の Helm chart の `targetRevision` を追跡する。
