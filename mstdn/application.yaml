@@ -31,7 +31,7 @@ spec:
   source:
     repoURL: https://mastodon.github.io/helm-charts/
     chart: mastodon
-    targetRevision: 1.1.3
+    targetRevision: 1.2.0
     helm:
       releaseName: mstdn
       valuesObject:
